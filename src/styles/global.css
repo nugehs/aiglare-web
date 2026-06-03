@@ -1,0 +1,123 @@
+@import "tailwindcss";
+
+/* ── aiglare brand ──────────────────────────────────────────────────────
+   Light, precise, "audit report" aesthetic. Slate ink on warm paper,
+   an indigo interactive accent, a soft warm "glare" beam, and the
+   red/amber/green severity triad as the functional signature.
+   Deliberately NOT the repoctx terminal look. Original to aiglare. */
+@theme {
+  /* surfaces */
+  --color-paper: #f8f7f4;
+  --color-paper-2: #f0efea;
+  --color-card: #ffffff;
+  --color-line: #e4e2db;
+  --color-line-2: #d6d3ca;
+
+  /* ink */
+  --color-ink: #0d1117;
+  --color-ink-2: #2b333d;
+  --color-muted: #5c6571;
+  --color-faint: #8a929c;
+
+  /* interactive accent (AI / indigo) — distinct from severity */
+  --color-iris: #5750e0;
+  --color-iris-2: #6f68f0;
+  --color-iris-ink: #2e2aa0;
+
+  /* severity triad — functional semantics, used only for audit signals */
+  --color-red: #e5484d;
+  --color-amber: #f5a623;
+  --color-green: #30a46c;
+  --color-red-soft: #fdecec;
+  --color-amber-soft: #fdf3e0;
+  --color-green-soft: #e8f6ee;
+
+  /* glare highlight */
+  --color-glare: #ffd166;
+
+  --font-display: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI",
+    Roboto, Helvetica, Arial, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas,
+    monospace;
+}
+
+html {
+  scroll-behavior: smooth;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+}
+
+::selection {
+  background: color-mix(in srgb, var(--color-iris) 22%, transparent);
+}
+
+.font-display {
+  font-family: var(--font-display);
+  letter-spacing: -0.02em;
+}
+
+/* the "glare" — a soft warm beam of light, the brand's signature gesture */
+.glare-beam {
+  background:
+    radial-gradient(
+      60% 50% at 50% 0%,
+      color-mix(in srgb, var(--color-glare) 38%, transparent) 0%,
+      transparent 70%
+    ),
+    radial-gradient(
+      40% 38% at 70% 8%,
+      color-mix(in srgb, var(--color-iris) 16%, transparent) 0%,
+      transparent 65%
+    );
+}
+
+.glare-text {
+  background: linear-gradient(100deg, #f5a623 0%, #ff8a4c 55%, #5750e0 130%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* faint grid, like an inspection surface */
+.bg-survey {
+  background-image:
+    linear-gradient(
+      to right,
+      color-mix(in srgb, var(--color-ink) 4%, transparent) 1px,
+      transparent 1px
+    ),
+    linear-gradient(
+      to bottom,
+      color-mix(in srgb, var(--color-ink) 4%, transparent) 1px,
+      transparent 1px
+    );
+  background-size: 44px 44px;
+}
+
+/* a sweeping scan line accent */
+@keyframes scan {
+  0% {
+    transform: translateY(0);
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  90% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+}
+.scanline {
+  animation: scan 3.6s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}

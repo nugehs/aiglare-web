@@ -1,0 +1,486 @@
+---
+import Layout from "../layouts/Layout.astro";
+import Window from "../components/Window.astro";
+
+const repo = "https://github.com/nugehs/aiglare";
+const npm = "https://www.npmjs.com/package/@nugehs/aiglare";
+
+const steps = [
+  {
+    n: "1",
+    title: "Scan",
+    body: "Finds every AI/LLM call site with a provider-agnostic registry — no config, no annotations. Raw fetch/axios to inference hosts count too.",
+  },
+  {
+    n: "2",
+    title: "Classify by sink",
+    body: "Traces where each output goes: returned to a user, feeding a side-effect, or internal-only. The sink decides how much the risk matters.",
+  },
+  {
+    n: "3",
+    title: "Score guardrails",
+    body: "Checks five governance dimensions per surface and rolls them into a red / amber / green severity you can read at a glance.",
+  },
+  {
+    n: "4",
+    title: "Gate in CI",
+    body: "--ci fails the build only on red side-effectful surfaces — the irreversible-action case — so you adopt it without warning fatigue.",
+  },
+];
+
+const sinks = [
+  {
+    key: "user-facing",
+    dot: "bg-amber",
+    body: "Returned from a route or controller, or rendered in a component. The model is talking directly to a person.",
+  },
+  {
+    key: "side-effectful",
+    dot: "bg-red",
+    body: "Feeds a payment, booking, email, database/file write, or shell. The model can trigger something irreversible.",
+  },
+  {
+    key: "internal",
+    dot: "bg-green",
+    body: "Logged or cached only. Lowest blast radius — flagged for awareness, never blocks your build.",
+  },
+];
+
+const guardrails = [
+  { t: "Confidence handling", b: "Does the code read and act on a confidence / probability signal before trusting the output?" },
+  { t: "Fallback path", b: "Is there an uncertain-or-failed branch — a default, a retry, a safe no-op — when the model is unsure?" },
+  { t: "Output validation", b: "Is the output schema-checked, parsed, or constrained before it's used downstream?" },
+  { t: "Human-in-the-loop", b: "For side-effects: does a person confirm before the irreversible action fires?" },
+  { t: "Error isolation", b: "Is the call wrapped so a model failure can't take down the surrounding request?" },
+];
+
+const providers = [
+  "OpenAI", "Anthropic", "Google", "Cohere", "Mistral", "Replicate",
+  "Vercel AI SDK", "LangChain", "LangGraph", "Ollama", "AWS Bedrock",
+  "Cloudflare Workers AI", "Hugging Face", "fetch / axios",
+];
+
+const mcpTools = [
+  { name: "ai_surface_audit", body: "Full audit of a repo → the same structured report as --json." },
+  { name: "ai_surface_gate", body: "CI-gate verdict: passed + count of blocking red side-effectful surfaces." },
+  { name: "list_providers", body: "The provider registry the scanner detects." },
+];
+---
+
+<Layout>
+  <span id="top"></span>
+
+  <!-- ───────────────────────── Hero ───────────────────────── -->
+  <section class="glare-beam relative overflow-hidden">
+    <div class="bg-survey absolute inset-0 opacity-60"></div>
+    <div
+      class="relative mx-auto grid max-w-6xl items-center gap-12 px-5 pt-20 pb-24 lg:grid-cols-[1.05fr_1fr] lg:pt-24"
+    >
+      <div>
+        <span
+          class="inline-flex items-center gap-2 rounded-full border border-line-2 bg-card px-3.5 py-1.5 text-xs font-medium text-muted shadow-sm"
+        >
+          <span class="h-1.5 w-1.5 rounded-full bg-red"></span>
+          AI governance · static analysis · CI gate
+        </span>
+
+        <h1
+          class="font-display mt-6 text-4xl leading-[1.05] font-bold tracking-tight text-ink sm:text-5xl lg:text-[3.4rem]"
+        >
+          Lint your AI features for
+          <span class="glare-text">governance guardrails</span>.
+        </h1>
+
+        <p class="mt-6 max-w-xl text-lg leading-relaxed text-ink-2">
+          Point aiglare at any JS/TS repo. It finds every place an LLM output
+          reaches a user or triggers a side-effect — payment, booking, email,
+          DB write — then flags which have no confidence handling, no fallback,
+          no validation, and no human-in-the-loop.
+        </p>
+
+        <div class="mt-8 flex flex-wrap items-center gap-3">
+          <a
+            href="#install"
+            class="inline-flex items-center gap-2 rounded-lg bg-ink px-5 py-3 text-sm font-semibold text-paper transition-transform hover:-translate-y-0.5"
+          >
+            Run an audit
+            <span aria-hidden="true">→</span>
+          </a>
+          <a
+            href={repo}
+            class="inline-flex items-center gap-2 rounded-lg border border-line-2 bg-card px-5 py-3 text-sm font-semibold text-ink transition-colors hover:border-ink/40"
+          >
+            View on GitHub
+          </a>
+        </div>
+
+        <div
+          class="mt-7 inline-flex items-center gap-3 rounded-lg border border-line-2 bg-card px-4 py-2.5 font-mono text-sm text-ink"
+        >
+          <span class="text-iris select-none">$</span>
+          <span>npx @nugehs/aiglare ./src --ci</span>
+        </div>
+      </div>
+
+      <!-- audit report card -->
+      <Window title="aiglare ./src" class="relative">
+        <div class="relative p-5 font-mono text-[0.8rem]">
+          <div class="scanline pointer-events-none absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-amber/10 to-transparent"></div>
+
+          <p class="text-muted">
+            scanned 38 files · <span class="text-ink">3 AI surfaces</span> ·
+            <span class="text-red">1 blocking</span>
+          </p>
+
+          <div class="mt-4 space-y-3">
+            <!-- red -->
+            <div class="rounded-lg border border-red/30 bg-red-soft p-3">
+              <div class="flex items-center justify-between">
+                <span class="font-semibold text-ink">routes/checkout.ts:42</span>
+                <span class="rounded bg-red px-1.5 py-0.5 text-[0.65rem] font-semibold text-white">side-effectful</span>
+              </div>
+              <p class="mt-1.5 text-[0.72rem] text-muted">
+                <span class="text-red">✗</span> confidence
+                <span class="text-red">✗</span> human-in-loop
+                <span class="text-red">✗</span> validation
+              </p>
+            </div>
+            <!-- amber -->
+            <div class="rounded-lg border border-amber/30 bg-amber-soft p-3">
+              <div class="flex items-center justify-between">
+                <span class="font-semibold text-ink">api/summarize.ts:18</span>
+                <span class="rounded bg-amber px-1.5 py-0.5 text-[0.65rem] font-semibold text-white">user-facing</span>
+              </div>
+              <p class="mt-1.5 text-[0.72rem] text-muted">
+                <span class="text-green">✓</span> confidence
+                <span class="text-red">✗</span> fallback
+                <span class="text-green">✓</span> validation
+              </p>
+            </div>
+            <!-- green -->
+            <div class="rounded-lg border border-green/30 bg-green-soft p-3">
+              <div class="flex items-center justify-between">
+                <span class="font-semibold text-ink">jobs/autotag.ts:7</span>
+                <span class="rounded bg-green px-1.5 py-0.5 text-[0.65rem] font-semibold text-white">internal</span>
+              </div>
+              <p class="mt-1.5 text-[0.72rem] text-muted">
+                <span class="text-green">✓</span> all guardrails present
+              </p>
+            </div>
+          </div>
+
+          <p class="mt-4 border-t border-line pt-3 text-ink">
+            <span class="text-red">✗ CI gate failed</span>
+            <span class="text-muted">— 1 red side-effectful surface</span>
+          </p>
+        </div>
+      </Window>
+    </div>
+  </section>
+
+  <!-- ───────────────── Problem statement ───────────────────── -->
+  <section class="border-y border-line bg-ink">
+    <div class="mx-auto max-w-5xl px-5 py-20 text-center">
+      <p
+        class="font-display text-2xl leading-snug font-medium text-paper sm:text-3xl"
+      >
+        Most AI incidents aren't model failures.
+        <br class="hidden sm:block" />
+        They're <span class="glare-text">governance failures</span> — the output
+        flowed straight to a user or an irreversible action with nothing in between.
+      </p>
+      <p class="mx-auto mt-5 max-w-2xl text-base text-paper/55">
+        aiglare makes those paths visible, and lets you block the dangerous ones
+        in CI before they ship.
+      </p>
+    </div>
+  </section>
+
+  <!-- ───────────────────── How it works ────────────────────── -->
+  <section id="how" class="mx-auto max-w-6xl px-5 py-24">
+    <div class="max-w-2xl">
+      <p class="text-sm font-semibold tracking-widest text-iris uppercase">
+        How it works
+      </p>
+      <h2 class="font-display mt-3 text-3xl font-bold tracking-tight text-ink sm:text-4xl">
+        Scan, classify, score, gate
+      </h2>
+      <p class="mt-4 text-lg leading-relaxed text-muted">
+        A static pass over your code — no runtime, no keys, no data leaving the
+        repo. Run it locally or wire it into CI.
+      </p>
+    </div>
+
+    <div class="mt-14 grid gap-5 md:grid-cols-2 lg:grid-cols-4">
+      {
+        steps.map((s) => (
+          <div class="rounded-2xl border border-line bg-card p-6">
+            <span class="font-display inline-flex h-9 w-9 items-center justify-center rounded-lg bg-ink text-sm font-bold text-paper">
+              {s.n}
+            </span>
+            <h3 class="font-display mt-4 text-lg font-semibold text-ink">
+              {s.title}
+            </h3>
+            <p class="mt-2 text-sm leading-relaxed text-muted">{s.body}</p>
+          </div>
+        ))
+      }
+    </div>
+  </section>
+
+  <!-- ───────────────── Sinks + Guardrails ──────────────────── -->
+  <section id="guardrails" class="border-y border-line bg-paper-2">
+    <div class="mx-auto max-w-6xl px-5 py-24">
+      <div class="grid gap-12 lg:grid-cols-[0.9fr_1.1fr]">
+        <!-- sinks -->
+        <div>
+          <p class="text-sm font-semibold tracking-widest text-iris uppercase">
+            Sinks
+          </p>
+          <h2 class="font-display mt-3 text-3xl font-bold tracking-tight text-ink">
+            Where the output goes decides the risk
+          </h2>
+          <p class="mt-4 text-base leading-relaxed text-muted">
+            Every AI surface is classified by sink. A model writing a log line
+            is not the same as a model issuing a refund.
+          </p>
+
+          <div class="mt-8 space-y-3">
+            {
+              sinks.map((s) => (
+                <div class="flex gap-3 rounded-xl border border-line bg-card p-4">
+                  <span class={`mt-1.5 h-3 w-3 shrink-0 rounded-full ${s.dot}`} />
+                  <div>
+                    <p class="font-mono text-sm font-semibold text-ink">
+                      {s.key}
+                    </p>
+                    <p class="mt-1 text-sm leading-relaxed text-muted">
+                      {s.body}
+                    </p>
+                  </div>
+                </div>
+              ))
+            }
+          </div>
+        </div>
+
+        <!-- guardrails -->
+        <div>
+          <p class="text-sm font-semibold tracking-widest text-iris uppercase">
+            Guardrails
+          </p>
+          <h2 class="font-display mt-3 text-3xl font-bold tracking-tight text-ink">
+            Five dimensions, scored per surface
+          </h2>
+          <p class="mt-4 text-base leading-relaxed text-muted">
+            Each surface is checked on five governance signals. Full coverage is
+            green; a side-effect with none is red.
+          </p>
+
+          <ol class="mt-8 divide-y divide-line overflow-hidden rounded-xl border border-line bg-card">
+            {
+              guardrails.map((g, i) => (
+                <li class="flex gap-4 p-4">
+                  <span class="font-mono text-sm text-faint">
+                    0{i + 1}
+                  </span>
+                  <div>
+                    <p class="font-semibold text-ink">{g.t}</p>
+                    <p class="mt-1 text-sm leading-relaxed text-muted">{g.b}</p>
+                  </div>
+                </li>
+              ))
+            }
+          </ol>
+        </div>
+      </div>
+
+      <!-- severity / CI gate -->
+      <div class="mt-14 grid items-center gap-8 rounded-2xl border border-line bg-card p-7 lg:grid-cols-[1.1fr_1fr]">
+        <div>
+          <h3 class="font-display text-2xl font-bold text-ink">
+            A severity you can adopt
+          </h3>
+          <p class="mt-3 text-base leading-relaxed text-muted">
+            The CI gate fails <em>only</em> on red side-effectful surfaces — the
+            "AI auto-triggers an irreversible action with no confirmation" case.
+            Safe to turn on today without drowning a team in warnings.
+          </p>
+          <div class="mt-5 flex flex-wrap gap-2 text-sm">
+            <span class="inline-flex items-center gap-2 rounded-lg border border-red/30 bg-red-soft px-3 py-1.5 font-medium text-ink">
+              <span class="h-2.5 w-2.5 rounded-full bg-red"></span> red · review now
+            </span>
+            <span class="inline-flex items-center gap-2 rounded-lg border border-amber/30 bg-amber-soft px-3 py-1.5 font-medium text-ink">
+              <span class="h-2.5 w-2.5 rounded-full bg-amber"></span> amber · partial
+            </span>
+            <span class="inline-flex items-center gap-2 rounded-lg border border-green/30 bg-green-soft px-3 py-1.5 font-medium text-ink">
+              <span class="h-2.5 w-2.5 rounded-full bg-green"></span> green · covered
+            </span>
+          </div>
+        </div>
+
+        <Window tone="dark" title="ci">
+          <pre class="p-5 font-mono text-[0.8rem] leading-relaxed text-paper/90"><span class="text-iris-2">$</span> npx @nugehs/aiglare ./src --ci
+
+<span class="text-faint">scanning…</span>  3 surfaces, 1 blocking
+<span class="text-red">✗ red</span>  routes/checkout.ts:42  side-effectful
+<span class="text-faint">────────────────────────────────────</span>
+<span class="text-red">exit 1</span> <span class="text-paper/60">· build blocked</span></pre>
+        </Window>
+      </div>
+    </div>
+  </section>
+
+  <!-- ───────────────────── Providers ──────────────────────── -->
+  <section id="providers" class="mx-auto max-w-6xl px-5 py-24">
+    <div class="max-w-2xl">
+      <p class="text-sm font-semibold tracking-widest text-iris uppercase">
+        Provider-agnostic
+      </p>
+      <h2 class="font-display mt-3 text-3xl font-bold tracking-tight text-ink sm:text-4xl">
+        It already knows your stack
+      </h2>
+      <p class="mt-4 text-lg leading-relaxed text-muted">
+        Detection is driven by a provider registry — SDKs and raw inference
+        calls alike. Adding a provider is a one-line PR.
+      </p>
+    </div>
+
+    <div class="mt-12 grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-line bg-line sm:grid-cols-3 lg:grid-cols-4">
+      {
+        providers.map((p) => (
+          <div class="flex items-center gap-2.5 bg-card px-5 py-4">
+            <span class="h-1.5 w-1.5 rounded-full bg-iris" />
+            <span class="text-sm font-medium text-ink">{p}</span>
+          </div>
+        ))
+      }
+    </div>
+  </section>
+
+  <!-- ───────────────────── MCP section ─────────────────────── -->
+  <section id="mcp" class="border-y border-line bg-paper-2">
+    <div class="mx-auto max-w-6xl px-5 py-24">
+      <div class="grid items-start gap-12 lg:grid-cols-[1fr_1.05fr]">
+        <div>
+          <p class="text-sm font-semibold tracking-widest text-iris uppercase">
+            MCP server
+          </p>
+          <h2 class="font-display mt-3 text-3xl font-bold tracking-tight text-ink sm:text-4xl">
+            Let your agents run the audit
+          </h2>
+          <p class="mt-4 text-lg leading-relaxed text-muted">
+            aiglare ships a built-in Model Context Protocol server — no SDK
+            dependency. Three tools, wired straight into your agent host.
+          </p>
+
+          <div class="mt-7 space-y-3">
+            {
+              mcpTools.map((t) => (
+                <div class="rounded-xl border border-line bg-card p-4">
+                  <code class="font-mono text-sm font-semibold text-iris">
+                    {t.name}
+                  </code>
+                  <p class="mt-1.5 text-sm leading-relaxed text-muted">
+                    {t.body}
+                  </p>
+                </div>
+              ))
+            }
+          </div>
+        </div>
+
+        <div class="space-y-4">
+          <Window tone="dark" title="claude_desktop_config.json">
+            <pre class="p-5 font-mono text-[0.8rem] leading-relaxed text-paper/90">{`{
+  `}<span class="text-iris-2">"mcpServers"</span>{`: {
+    `}<span class="text-iris-2">"aiglare"</span>{`: {
+      `}<span class="text-green">"command"</span>{`: `}<span class="text-amber">"npx"</span>{`,
+      `}<span class="text-green">"args"</span>{`: [`}<span class="text-amber">"-y"</span>{`, `}<span class="text-amber">"@nugehs/aiglare"</span>{`, `}<span class="text-amber">"mcp"</span>{`]
+    }
+  }
+}`}</pre>
+          </Window>
+
+          <!-- repoctx acceleration -->
+          <div class="rounded-xl border border-iris/25 bg-iris/5 p-5">
+            <p class="text-sm font-semibold text-iris-ink">
+              ⚡ Optional: repoctx acceleration
+            </p>
+            <p class="mt-2 text-sm leading-relaxed text-ink-2">
+              If a
+              <a href="https://github.com/nugehs/repoctx" class="font-medium text-iris underline decoration-iris/40 underline-offset-2">repoctx</a>
+              index is present, aiglare uses it to sharpen sink classification
+              with real <code class="font-mono text-[0.85em]">kind</code>/<code class="font-mono text-[0.85em]">domain</code>
+              data. Same tool, two fidelity levels — standalone for everyone,
+              richer for repoctx users.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ───────────────── Honest limitations ──────────────────── -->
+  <section class="mx-auto max-w-4xl px-5 py-20">
+    <div class="rounded-2xl border border-line bg-card p-8">
+      <p class="text-sm font-semibold tracking-widest text-faint uppercase">
+        Honest limitations
+      </p>
+      <p class="font-display mt-3 text-xl leading-snug font-medium text-ink sm:text-2xl">
+        It's a linter, not a verifier.
+      </p>
+      <p class="mt-4 text-base leading-relaxed text-muted">
+        This is static, advisory analysis. It produces false positives (a
+        guardrail two call-hops away can be missed) and false negatives (a
+        <code class="font-mono text-[0.85em] text-ink">confidence</code> variable
+        that doesn't actually gate anything reads as present). Treat the output
+        as <strong class="text-ink">surfaces to review</strong>, not violations.
+        The repoctx adapter exists precisely to close the call-graph gap.
+      </p>
+    </div>
+  </section>
+
+  <!-- ───────────────────── Install / CTA ───────────────────── -->
+  <section id="install" class="border-t border-line bg-ink">
+    <div class="glare-beam">
+      <div class="mx-auto max-w-4xl px-5 py-24 text-center">
+        <h2 class="font-display text-3xl font-bold tracking-tight text-paper sm:text-4xl">
+          See your AI surfaces in one command
+        </h2>
+        <p class="mx-auto mt-4 max-w-xl text-lg leading-relaxed text-paper/65">
+          No install, no config, no keys. Run it on any JS/TS repo right now.
+        </p>
+
+        <div class="mx-auto mt-10 max-w-2xl space-y-3 text-left">
+          <div class="flex items-center gap-3 rounded-lg border border-white/10 bg-black/30 px-4 py-3 font-mono text-sm text-paper">
+            <span class="text-iris-2 select-none">$</span>
+            <span>npx @nugehs/aiglare</span>
+            <span class="text-faint"># audit current repo</span>
+          </div>
+          <div class="flex items-center gap-3 rounded-lg border border-white/10 bg-black/30 px-4 py-3 font-mono text-sm text-paper">
+            <span class="text-iris-2 select-none">$</span>
+            <span>npx @nugehs/aiglare ./src --ci</span>
+            <span class="text-faint"># fail the build on red</span>
+          </div>
+        </div>
+
+        <div class="mt-10 flex flex-wrap justify-center gap-3">
+          <a
+            href={repo}
+            class="inline-flex items-center gap-2 rounded-lg bg-paper px-5 py-3 text-sm font-semibold text-ink transition-transform hover:-translate-y-0.5"
+          >
+            Star on GitHub
+            <span aria-hidden="true">→</span>
+          </a>
+          <a
+            href={npm}
+            class="inline-flex items-center gap-2 rounded-lg border border-white/15 px-5 py-3 text-sm font-semibold text-paper transition-colors hover:border-white/40"
+          >
+            View on npm
+          </a>
+        </div>
+      </div>
+    </div>
+  </section>
+</Layout>
