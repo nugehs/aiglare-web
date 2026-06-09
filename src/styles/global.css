@@ -6,23 +6,25 @@
    red/amber/green severity triad as the functional signature.
    Deliberately NOT the repoctx terminal look. Original to aiglare. */
 @theme {
-  /* surfaces */
-  --color-paper: #f8f7f4;
-  --color-paper-2: #f0efea;
+  /* surfaces — shared brand paper */
+  --color-paper: #eceae5;
+  --color-paper-2: #e3e0d9;
   --color-card: #ffffff;
-  --color-line: #e4e2db;
-  --color-line-2: #d6d3ca;
+  --color-line: #d3d0c9;
+  --color-line-2: #c8c5be;
 
-  /* ink */
-  --color-ink: #0d1117;
-  --color-ink-2: #2b333d;
-  --color-muted: #5c6571;
-  --color-faint: #8a929c;
+  /* ink — shared brand ink scale */
+  --color-ink: #16150f;
+  --color-ink-2: #46443c;
+  --color-muted: #86837a;
+  --color-faint: #9b988f;
 
-  /* interactive accent (AI / indigo) — distinct from severity */
-  --color-iris: #5750e0;
-  --color-iris-2: #6f68f0;
-  --color-iris-ink: #2e2aa0;
+  /* interactive accent — the toolchain red */
+  --color-iris: #dc0000;
+  --color-iris-2: #ef3c3c;
+  --color-iris-ink: #b00000;
+  --color-accent: #dc0000;
+  --color-accent-deep: #b00000;
 
   /* severity triad — functional semantics, used only for audit signals */
   --color-red: #e5484d;
@@ -36,9 +38,8 @@
   --color-glare: #ffd166;
 
   --font-display: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
-  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI",
-    Roboto, Helvetica, Arial, sans-serif;
-  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas,
+  --font-sans: "Spectral", Georgia, "Times New Roman", serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas,
     monospace;
 }
 
@@ -79,7 +80,7 @@ body {
 }
 
 .glare-text {
-  background: linear-gradient(100deg, #f5a623 0%, #ff8a4c 55%, #5750e0 130%);
+  background: linear-gradient(100deg, #f5a623 0%, #ff8a4c 55%, #dc0000 130%);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
