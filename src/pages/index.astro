@@ -61,9 +61,59 @@ const providers = [
 ];
 
 const mcpTools = [
-  { name: "ai_surface_audit", body: "Full audit of a repo → the same structured report as --json." },
+  { name: "ai_surface_audit", body: "Full audit of a repo → the same structured report as --json. Accepts an optional compliance array; each surface includes violations[] when set." },
   { name: "ai_surface_gate", body: "CI-gate verdict: passed + count of blocking red side-effectful surfaces." },
   { name: "list_providers", body: "The provider registry the scanner detects." },
+];
+
+const complianceFrameworks = [
+  {
+    id: "soc2",
+    label: "SOC 2",
+    accent: "#6366f1",
+    softBg: "bg-[#6366f1]/8",
+    border: "border-[#6366f1]/25",
+    textColor: "text-[#6366f1]",
+    controls: "CC7.2 · CC7.4 · CC9.1 · A1.2 · PI1.2 · PI1.3",
+    body: "Trust Services Criteria — change management, monitoring, and processing integrity for AI outputs.",
+  },
+  {
+    id: "eu-ai-act",
+    label: "EU AI Act",
+    accent: "#0ea5e9",
+    softBg: "bg-[#0ea5e9]/8",
+    border: "border-[#0ea5e9]/25",
+    textColor: "text-[#0ea5e9]",
+    controls: "Art. 9 · Art. 13 · Art. 14 · Art. 17",
+    body: "Risk management, transparency, human oversight, and quality management for high-risk AI systems.",
+  },
+  {
+    id: "nist",
+    label: "NIST AI RMF",
+    accent: "#10b981",
+    softBg: "bg-[#10b981]/8",
+    border: "border-[#10b981]/25",
+    textColor: "text-[#10b981]",
+    controls: "GOVERN-1.2 · MAP-2.3 · MEASURE-2.5/2.6 · MANAGE-1.3/2.2",
+    body: "Govern, Map, Measure, Manage — the four RMF functions, mapped to concrete guardrail gaps.",
+  },
+  {
+    id: "owasp",
+    label: "OWASP LLM Top 10",
+    accent: "#f97316",
+    softBg: "bg-[#f97316]/8",
+    border: "border-[#f97316]/25",
+    textColor: "text-[#f97316]",
+    controls: "LLM02 · LLM04 · LLM08 · LLM09",
+    body: "Insecure output handling, model DoS, excessive agency, and overreliance — mapped per surface.",
+  },
+];
+
+const outputFormats = [
+  { key: "terminal", body: "Default coloured report, now with a per-framework violation summary footer." },
+  { key: "lint", body: "ESLint-style output. Rule IDs like soc2/CC9.1. Works in CI, editors, and code review." },
+  { key: "markdown", body: "Evidence doc with per-framework control tables — hand it to an auditor or attach to a ticket." },
+  { key: "html", body: "Branded HTML report with sticky nav, collapsible sections, and guardrail matrix table." },
 ];
 ---
 
@@ -81,7 +131,7 @@ const mcpTools = [
           class="inline-flex items-center gap-2 rounded-full border border-line-2 bg-card px-3.5 py-1.5 text-xs font-medium text-muted shadow-sm"
         >
           <span class="h-1.5 w-1.5 rounded-full bg-red"></span>
-          AI governance · static analysis · CI gate
+          AI governance · static analysis · compliance · CI gate
         </span>
 
         <h1
@@ -95,7 +145,9 @@ const mcpTools = [
           Point aiglare at any JS/TS repo. It finds every place an LLM output
           reaches a user or triggers a side-effect — payment, booking, email,
           DB write — then flags which have no confidence handling, no fallback,
-          no validation, and no human-in-the-loop.
+          no validation, and no human-in-the-loop. Map findings to SOC&nbsp;2,
+          EU&nbsp;AI&nbsp;Act, NIST&nbsp;AI&nbsp;RMF, and OWASP&nbsp;LLM Top&nbsp;10
+          with one flag.
         </p>
 
         <div class="mt-8 flex flex-wrap items-center gap-3">
@@ -123,7 +175,7 @@ const mcpTools = [
       </div>
 
       <!-- audit report card -->
-      <Window title="aiglare ./src" class="relative">
+      <Window title="aiglare ./src --compliance all --format lint" class="relative">
         <div class="relative p-5 font-mono text-[0.8rem]">
           <div class="scanline pointer-events-none absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-amber/10 to-transparent"></div>
 
@@ -133,45 +185,47 @@ const mcpTools = [
           </p>
 
           <div class="mt-4 space-y-3">
-            <!-- red -->
+            <!-- red with compliance violations -->
             <div class="rounded-lg border border-red/30 bg-red-soft p-3">
               <div class="flex items-center justify-between">
-                <span class="font-semibold text-ink">routes/checkout.ts:42</span>
+                <span class="font-semibold text-ink">routes/checkout.ts</span>
                 <span class="rounded bg-red px-1.5 py-0.5 text-[0.65rem] font-semibold text-white">side-effectful</span>
               </div>
-              <p class="mt-1.5 text-[0.72rem] text-muted">
-                <span class="text-red">✗</span> confidence
-                <span class="text-red">✗</span> human-in-loop
-                <span class="text-red">✗</span> validation
+              <p class="mt-2 text-[0.72rem] leading-relaxed text-muted">
+                <span class="text-red">error</span>&nbsp; human-in-loop required &nbsp;<span class="text-faint">soc2/CC9.1</span>
+              </p>
+              <p class="text-[0.72rem] leading-relaxed text-muted">
+                <span class="text-red">error</span>&nbsp; output validation missing &nbsp;<span class="text-faint">eu-ai-act/Art.9</span>
+              </p>
+              <p class="text-[0.72rem] leading-relaxed text-muted">
+                <span class="text-red">error</span>&nbsp; excessive agency &nbsp;<span class="text-faint">owasp/LLM08</span>
               </p>
             </div>
             <!-- amber -->
             <div class="rounded-lg border border-amber/30 bg-amber-soft p-3">
               <div class="flex items-center justify-between">
-                <span class="font-semibold text-ink">api/summarize.ts:18</span>
+                <span class="font-semibold text-ink">api/summarize.ts</span>
                 <span class="rounded bg-amber px-1.5 py-0.5 text-[0.65rem] font-semibold text-white">user-facing</span>
               </div>
-              <p class="mt-1.5 text-[0.72rem] text-muted">
-                <span class="text-green">✓</span> confidence
-                <span class="text-red">✗</span> fallback
-                <span class="text-green">✓</span> validation
+              <p class="mt-2 text-[0.72rem] leading-relaxed text-muted">
+                <span class="text-amber">warn</span>&nbsp; fallback path missing &nbsp;<span class="text-faint">nist/MANAGE-1.3</span>
               </p>
             </div>
             <!-- green -->
             <div class="rounded-lg border border-green/30 bg-green-soft p-3">
               <div class="flex items-center justify-between">
-                <span class="font-semibold text-ink">jobs/autotag.ts:7</span>
+                <span class="font-semibold text-ink">jobs/autotag.ts</span>
                 <span class="rounded bg-green px-1.5 py-0.5 text-[0.65rem] font-semibold text-white">internal</span>
               </div>
-              <p class="mt-1.5 text-[0.72rem] text-muted">
-                <span class="text-green">✓</span> all guardrails present
+              <p class="mt-2 text-[0.72rem] text-muted">
+                <span class="text-green">✓</span> all guardrails present — no violations
               </p>
             </div>
           </div>
 
           <p class="mt-4 border-t border-line pt-3 text-ink">
-            <span class="text-red">✗ CI gate failed</span>
-            <span class="text-muted">— 1 red side-effectful surface</span>
+            <span class="text-red">3 errors</span>
+            <span class="text-muted">&nbsp;1 warning&nbsp;·&nbsp;1 file</span>
           </p>
         </div>
       </Window>
@@ -358,6 +412,92 @@ const mcpTools = [
     </div>
   </section>
 
+  <!-- ─────────────────── Compliance reports ───────────────── -->
+  <section id="compliance" class="border-y border-line bg-paper-2">
+    <div class="mx-auto max-w-6xl px-5 py-24">
+      <div class="max-w-2xl">
+        <p class="text-sm font-semibold tracking-widest text-iris uppercase">
+          Compliance reports
+        </p>
+        <h2 class="font-display mt-3 text-3xl font-bold tracking-tight text-ink sm:text-4xl">
+          One scan, four frameworks
+        </h2>
+        <p class="mt-4 text-lg leading-relaxed text-muted">
+          Pass <code class="font-mono text-[0.9em] text-ink">--compliance all</code> and every surface gets
+          annotated with the specific controls it violates. Pick your output format
+          to match your workflow — ESLint lint, Markdown evidence doc, or an
+          auditor-ready HTML report.
+        </p>
+      </div>
+
+      <!-- Framework cards -->
+      <div class="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {
+          complianceFrameworks.map((fw) => (
+            <div class={`rounded-2xl border p-5 ${fw.border} ${fw.softBg}`}>
+              <p class={`font-display text-lg font-bold ${fw.textColor}`}>
+                {fw.label}
+              </p>
+              <p class="mt-1 font-mono text-[0.72rem] leading-relaxed text-muted">
+                {fw.controls}
+              </p>
+              <p class="mt-3 text-sm leading-relaxed text-ink-2">{fw.body}</p>
+            </div>
+          ))
+        }
+      </div>
+
+      <!-- Output formats + code window -->
+      <div class="mt-12 grid items-start gap-10 lg:grid-cols-[1.1fr_1fr]">
+        <!-- formats list -->
+        <div>
+          <p class="text-sm font-semibold tracking-widest text-faint uppercase">
+            Output formats
+          </p>
+          <ol class="mt-5 divide-y divide-line overflow-hidden rounded-xl border border-line bg-card">
+            {
+              outputFormats.map((f) => (
+                <li class="flex gap-4 p-4">
+                  <code class="font-mono text-sm font-semibold text-iris shrink-0">
+                    {f.key}
+                  </code>
+                  <p class="text-sm leading-relaxed text-muted">{f.body}</p>
+                </li>
+              ))
+            }
+          </ol>
+
+          <!-- multi-path note -->
+          <div class="mt-5 rounded-xl border border-line bg-card p-4">
+            <p class="text-sm font-semibold text-ink">Multi-repo</p>
+            <p class="mt-1.5 text-sm leading-relaxed text-muted">
+              Pass multiple paths to combine several repos into a single report.
+              Files are prefixed with their repo root for clear attribution.
+            </p>
+            <div class="mt-3 rounded-lg border border-line bg-paper px-3 py-2 font-mono text-[0.78rem] text-ink">
+              aiglare ./api ./web --compliance all --format html
+            </div>
+          </div>
+        </div>
+
+        <!-- code window showing commands -->
+        <Window tone="dark" title="compliance examples">
+          <pre class="p-5 font-mono text-[0.8rem] leading-loose text-paper/90"><span class="text-faint"># ESLint-style lint — works in CI</span>
+<span class="text-iris-2">$</span> aiglare --compliance soc2,eu-ai-act --format lint
+
+<span class="text-faint"># Markdown evidence doc for auditors</span>
+<span class="text-iris-2">$</span> aiglare --compliance all --format markdown > AUDIT.md
+
+<span class="text-faint"># Branded HTML report</span>
+<span class="text-iris-2">$</span> aiglare --compliance all --format html > report.html
+
+<span class="text-faint"># Lint gate — fail CI on compliance errors</span>
+<span class="text-iris-2">$</span> aiglare --compliance all --format lint --ci</pre>
+        </Window>
+      </div>
+    </div>
+  </section>
+
   <!-- ───────────────────── MCP section ─────────────────────── -->
   <section id="mcp" class="border-y border-line bg-paper-2">
     <div class="mx-auto max-w-6xl px-5 py-24">
@@ -462,6 +602,16 @@ const mcpTools = [
             <span class="text-iris-2 select-none">$</span>
             <span>npx @nugehs/aiglare ./src --ci</span>
             <span class="text-faint"># fail the build on red</span>
+          </div>
+          <div class="flex items-center gap-3 rounded-lg border border-white/10 bg-black/30 px-4 py-3 font-mono text-sm text-paper">
+            <span class="text-iris-2 select-none">$</span>
+            <span>npx @nugehs/aiglare --compliance all --format html</span>
+            <span class="text-faint"># HTML evidence report</span>
+          </div>
+          <div class="flex items-center gap-3 rounded-lg border border-white/10 bg-black/30 px-4 py-3 font-mono text-sm text-paper">
+            <span class="text-iris-2 select-none">$</span>
+            <span>npx @nugehs/aiglare --compliance soc2,nist --format lint --ci</span>
+            <span class="text-faint"># compliance linter in CI</span>
           </div>
         </div>
 
